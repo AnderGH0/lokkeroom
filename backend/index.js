@@ -42,11 +42,10 @@ app.post("/api/register", async (req, res) => { // req: {userName, email, passwo
     if(isUser){ // User is already registered
         return res.status(400).json({message: "User already exists"});
     }
-
-    const user = new User({userName, email, password}); // Create a new user
-    await user.save(); // Save the user to the database
-
     const accessToken = jwt.sign({user}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: "36000m"}); // Create a JWT token
+
+    const user = new User({userName, email, password, toke:accessToken}); // Create a new user
+    await user.save(); // Save the user to the database
 
     return res.json({error: false, accessToken, user, message: "User created successfully"}); // Return the JWT token, the user and a message confirming the user has been created
 }); 
@@ -69,9 +68,6 @@ app.post("/api/login", async (req, res) => { // req: {login, password} res: A JW
         return res.status(400).json({message: "Incorrect password"});
     }
     const user = {user: userInfo}
-    console.log(user);
-    console.log("-----------------")
-    console.log(userInfo);
     const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: "36000m"}); // Create a JWT token
     
     return res.json({error: false, accessToken, userInfo, message: "Loggin successful"}); // Return the JWT token and the user
@@ -94,7 +90,7 @@ app.post("/api/lobby/create-lobby", authenticateToken, async (req, res) => { //C
     const userData = await User.findOne({userName: userName}); // Search the user in the database
     userData.lobbies.push(lobbyName); // Add the lobby to the user
     await userData.save(); // Update the user
-    return res.json({error: false, message:"Lobby created successfully", admin: userName}); // Return a message confirming the lobby has been created
+    return res.json({error: false, message:"Lobby created successfully", admin: userName, "_id": lobby._id}); // Return a message confirming the lobby has been created
 
 }); 
 
@@ -104,18 +100,19 @@ app.post("/api/lobby/:lobbyId", authenticateToken, async (req, res) => {  // CRE
     if(!content){ // If the message is missing
         return res.status(400).json({message: "There must be a message to post"});
     }
-    const currentLobby = await Lobby.findOne({_id: lobbyId}); // Search the lobby in the database
-    if(!currentLobby){ // Lobby does not exist
-        return res.status(400).json({message: "Lobby does not exist"});
-    } 
     try {
+        const currentLobby = await Lobby.findOne({_id: lobbyId}); // Search the lobby in the database
+        if(!currentLobby){ // Lobby does not exist
+            return res.status(400).json({message: "Lobby does not exist"});
+        } 
         const message = new Message({ owner: userName,content, lobby : currentLobby.name}); // Create a message
         await message.save(); // Save the message to the database
         currentLobby.messages.push(message); // Add the message to the lobby
         await currentLobby.save(); // Update the lobby to the database
+
         return res.json({error: false, message: "Message posted successfully", message}); // Return a message confirming the message has been posted
     } catch (error) {
-        return res.status(400).json({message: "Message could not be posted"});   
+        return res.status(400).json({error: true, message: "Message could not be posted"});   
     }
 });
 
@@ -167,9 +164,15 @@ app.post("/api/lobby/:lobbyId/add-user", authenticateToken, async (req, res) => 
         if(admin !== currentLobby.admin){ // User is not the admin
             return res.status(400).json({message: "Only the admin can add users to the lobby"});
         }
+        const invitedUserData = await User.findOne({userName: invitedUser}); // Search the user in the database
+        if(!invitedUserData){ // User does not exist
+            return res.status(400).json({message: "User does not exist"});
+        }
+        if(currentLobby.users.includes(invitedUser)){ // User is already in the lobby
+            return res.status(400).json({message: "User is already in the lobby"});
+        }
         currentLobby.users.push(invitedUser); // Add the user to the lobby
         await currentLobby.save(); // update the lobby
-        const invitedUserData = await User.findOne({userName: invitedUser}); // Search the user in the database
         invitedUserData.lobbies.push(currentLobby.name); // Add the lobby to the user
         await invitedUserData.save(); // Update the user 
     } catch (error) {
