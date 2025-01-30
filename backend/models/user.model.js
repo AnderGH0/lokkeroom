@@ -6,7 +6,7 @@ const userSchema = new Schema({
     userName : {type: String, required: true},
     email : {type: String, required: true},
     password : {type: String, required: true},
-    lobbies : {type: [String], default: []}, // lobbies : {type: [mongoose.SchemaType.ObjectId], ref: "Lobby" , required: true},
+    lobbies : {type: [String] , default: []},  // {type: [{type: mongoose.SchemaTypes.ObjectId, ref: "Lobby"}] , default: []}, 
     createdAt : {type: Date, default: Date.now()}
 })
 
