@@ -109,7 +109,7 @@ app.post("/api/lobby/:lobbyId", authenticateToken, async (req, res) => {  // CRE
         return res.status(400).json({message: "Lobby does not exist"});
     } 
     try {
-        const message = new Message({ owner: userName,content, lobbyName : currentLobby.name}); // Create a message
+        const message = new Message({ owner: userName,content, lobby : currentLobby.name}); // Create a message
         await message.save(); // Save the message to the database
         currentLobby.messages.push(message); // Add the message to the lobby
         await currentLobby.save(); // Update the lobby to the database
